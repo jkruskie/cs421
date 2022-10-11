@@ -1,5 +1,6 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -129,9 +130,9 @@ public class Database {
    public void seed() {
       // Seed classrooms
       String sql = "INSERT INTO classroom_table(classroom_name, capacity)\n"
-      + " VALUES('A', 30),\n"
-      + " ('B', 25),\n"
-      + " ('C', 20);";
+            + " VALUES('A', 30),\n"
+            + " ('B', 25),\n"
+            + " ('C', 20);";
 
       try (Connection conn = this.connect();
             Statement stmt = conn.createStatement()) {
@@ -144,24 +145,24 @@ public class Database {
 
       // Seed courses
       sql = "INSERT INTO courses_table(course_id, course_title, credit_hours)\n"
-      + " VALUES('CS 101', 'Intro to Computer Science', 3),\n"
-      + " ('CS 105', 'Computers and Programming', 4),\n"
-      + " ('CSC 105', 'Computers and Programming', 4), \n"
-      + " ('CSC 107', 'Introduction to Code Preparation', 1), \n"
-      + " ('CSC 116', 'Programming I', 4), \n"
-      + " ('CSC 216', 'Programming II', 4), \n"
-      + " ('CSC 227', 'Commenting and Naming Conventions', 2), \n"
-      + " ('CSC 316', 'Data Structures & Algorithms', 4), \n"
-      + " ('CSC 416', 'Advanced Algorithm Analysis', 3), \n"
-      + " ('CSC 211', 'Introductory .NET Development', 3), \n"
-      + " ('CSC 311', 'Advanced .NET Development', 4), \n"
-      + " ('CSC 313', 'Real World Application Development', 3), \n"
-      + " ('CSC 411', 'Data Driven Systems', 3), \n"
-      + " ('CSC 412', 'Sensor Systems', 3), \n"
-      + " ('CSC 413', 'Artificial Intelligence Systems', 3), \n"
-      + " ('CSC 496', 'Software Engineering I', 4), \n"
-      + " ('CSC 497', 'Software Engineering II', 4), \n"
-      + " ('CSC 498', 'Software Engineering III', 4);";
+            + " VALUES('CS 101', 'Intro to Computer Science', 3),\n"
+            + " ('CS 105', 'Computers and Programming', 4),\n"
+            + " ('CSC 105', 'Computers and Programming', 4), \n"
+            + " ('CSC 107', 'Introduction to Code Preparation', 1), \n"
+            + " ('CSC 116', 'Programming I', 4), \n"
+            + " ('CSC 216', 'Programming II', 4), \n"
+            + " ('CSC 227', 'Commenting and Naming Conventions', 2), \n"
+            + " ('CSC 316', 'Data Structures \u0026 Algorithms', 4), \n"
+            + " ('CSC 416', 'Advanced Algorithm Analysis', 3), \n"
+            + " ('CSC 211', 'Introductory .NET Development', 3), \n"
+            + " ('CSC 311', 'Advanced .NET Development', 4), \n"
+            + " ('CSC 313', 'Real World Application Development', 3), \n"
+            + " ('CSC 411', 'Data Driven Systems', 3), \n"
+            + " ('CSC 412', 'Sensor Systems', 3), \n"
+            + " ('CSC 413', 'Artificial Intelligence Systems', 3), \n"
+            + " ('CSC 496', 'Software Engineering I', 4), \n"
+            + " ('CSC 497', 'Software Engineering II', 4), \n"
+            + " ('CSC 498', 'Software Engineering III', 4);";
 
       try (Connection conn = this.connect();
             Statement stmt = conn.createStatement()) {
@@ -174,12 +175,12 @@ public class Database {
 
       // Seed professors
       sql = "INSERT INTO professors_table(professor_name)\n"
-      + " VALUES('james'),\n"
-      + " ('smith'),\n"
-      + " ('jones'),\n"
-      + " ('vasques'),\n"
-      + " ('abdul'),\n"
-      + " ('thomas');";
+            + " VALUES('james'),\n"
+            + " ('smith'),\n"
+            + " ('jones'),\n"
+            + " ('vasques'),\n"
+            + " ('abdul'),\n"
+            + " ('thomas');";
 
       try (Connection conn = this.connect();
             Statement stmt = conn.createStatement()) {
@@ -191,8 +192,7 @@ public class Database {
       }
    }
 
-   public void close()
-   {
+   public void close() {
       // End connection to database
       Connection conn = this.connect();
       try {
@@ -202,5 +202,48 @@ public class Database {
       } catch (SQLException ex) {
          // System.out.println(ex.getMessage());
       }
+   }
+
+   public void insertScheduleFile(ScheduleFile sf) {
+      // Print the schedule file
+      System.out.println(sf.toString());
+      System.out.println(sf.getCourseName());
+
+      // Initialize variables for inserting into database
+      int courseId;
+
+      ResultSet results = findCourse(sf.getCourseName());
+
+      // Console log all results
+      System.out.println("Results:");
+      try {
+         while (results.next()) {
+            System.out.println(results.getString("course_id"));
+         }
+      } catch (SQLException e) {
+         // TODO Auto-generated catch block
+         e.printStackTrace();
+      }
+   }
+
+   private ResultSet findCourse(String name) {
+      // Find the course from the courses_table
+      // by using the course_title and return the entire row
+      // Not worrying about sanatizing data or anything
+      String sql = "SELECT * FROM courses_table WHERE course_id = ?;";
+
+      try (Connection conn = this.connect();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+         // set the value
+         pstmt.setString(1, name);
+
+         ResultSet rs = pstmt.executeQuery();
+
+         return rs;
+      } catch (SQLException e) {
+         System.out.println(e.getMessage());
+      }
+      return null;
    }
 }

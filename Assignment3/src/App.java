@@ -1,4 +1,6 @@
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Scanner;
 
 public class App {
@@ -6,6 +8,7 @@ public class App {
    private static boolean continueExec = true;
    static Database db;
    static Scanner scanner = new Scanner(System.in);
+   static ArrayList<ScheduleFile> scheduleFile = new ArrayList<ScheduleFile>();
 
    public static void main(String[] args) throws Exception {
       if (checkDatabaseExists()) {
@@ -91,7 +94,7 @@ public class App {
          // System.out.println("6. View all classrooms");
          System.out.println("1. Import Schedule File");
          System.out.println("7. Exit");
-         System.out.println("8. Exit & Destroy Database");
+         System.out.println("8. Exit and Destroy Database");
          System.out.print("Enter your choice: ");
 
          // Get the user input and determine what option they selected
@@ -101,7 +104,7 @@ public class App {
             case 1:
                // Import Schedule File
                // System.out.println("Importing schedule file");
-               importScheduleFile();
+               readScheduleFile();
                break;
             case 7:
                // Exit
@@ -127,23 +130,66 @@ public class App {
       file.delete();
    }
 
-   private static void importScheduleFile() {
+   private static void readScheduleFile() {
       // Prompt user for file name
       System.out.print("Enter the absolute file path: ");
       String response = scanner.next();
          if(checkFileExists(response)) {
             // File exists
-            System.out.println("File exists");
-            // Import the file
+            // System.out.println("File exists");
+            
+            // Read the schedule file and store the data into the 
+            // scheduleFile ArrayList
+            try {
+               readScheduleFile(response);
+
+               if (scheduleFile.size() > 0) {
+                  // System.out.println("Schedule file has data");
+                  // System.out.println("Schedule file size: " + scheduleFile.size());
+                  importScheduleFile();
+               } else {
+                  System.out.println("Schedule file is empty");
+               }
+            } catch (FileNotFoundException e) {
+               // TODO Auto-generated catch block
+               e.printStackTrace();
+            }
+
          } else {
             // File does not exist
             System.out.println("File does not exist");
-            importScheduleFile();
+            readScheduleFile();
          }
    }
 
    private static boolean checkFileExists(String filePath) {
       File file = new File(filePath);
       return file.exists();
+   }
+
+   private static void readScheduleFile(String filePath) throws FileNotFoundException {
+      // Read the file
+      File file = new File(filePath);
+      Scanner scanner = new Scanner(file);
+      while(scanner.hasNextLine()) {
+         String line = scanner.nextLine();
+         // Break the line apart by tabs
+         String[] lineArray = line.split("\t");
+         // Create a new ScheduleFile object
+         // I am assuming that the file is formatted correctly and data is clean
+        scheduleFile.add(new ScheduleFile(lineArray[0], lineArray[1], lineArray[2], lineArray[3], lineArray[4]));
+        // Print what is in the array
+         // System.out.println(lineArray[0] + " " + lineArray[1] + " " + lineArray[2] + " " + lineArray[3] + " " + lineArray[4]);
+      }
+      // Close the scanner/file
+      scanner.close();
+   }
+
+   private static void importScheduleFile() {
+      // Loop through the scheduleFile ArrayList and insert the data into the database
+      for (ScheduleFile sf : scheduleFile) {
+         // Insert the data into the database
+         db.insertScheduleFile(sf);
+      }
    }
 }
