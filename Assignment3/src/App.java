@@ -69,7 +69,7 @@ public class App {
         }
     }
 
-    public static void createDatabaseFile() {
+    private static void createDatabaseFile() {
         // Create a new file
         new File("db.sqlite");
 
@@ -81,20 +81,18 @@ public class App {
         }
     }
 
-    public static void promptUserMenu() {
+    private static void promptUserMenu() {
         // While the continueExec boolean is true, continue to prompt the user
         // for input regarding which menu option they want.
         while (continueExec) {
+            clearConsole();
             System.out.println("\nPlease select an option:");
-            // System.out.println("1. Add a new course");
-            // System.out.println("2. Add a new professor");
-            // System.out.println("3. Add a new classroom");
-            // System.out.println("4. View all courses");
-            // System.out.println("5. View all professors");
-            // System.out.println("6. View all classrooms");
             System.out.println("1. Import Schedule File");
-            System.out.println("7. Exit");
-            System.out.println("8. Exit and Destroy Database");
+            System.out.println("2. Report - Date/Time");
+            System.out.println("3. Report - Faculty Members");
+            System.out.println("4. Report - Classes");
+            System.out.println("5. Exit");
+            System.out.println("6. Exit and Destroy Database");
             System.out.print("Enter your choice: ");
 
             // Get the user input and determine what option they selected
@@ -106,12 +104,22 @@ public class App {
                     // System.out.println("Importing schedule file");
                     readScheduleFile();
                     break;
-                case 7:
+                case 2:
+                    // Report - Date/Time
+                    // System.out.println("Report - Date/Time");
+                    reportDateTime();
+                    break;
+                case 3:
+                    // Report - Faculty Members
+                    // System.out.println("Report - Faculty Members");
+                    reportFacultyMembers();
+                    break;
+                case 5:
                     // Exit
                     // System.out.println("Exiting");
                     System.exit(0);
                     break;
-                case 8:
+                case 6:
                     // Exit & Destroy Database
                     // System.out.println("Exiting and destroying database");
                     db.drop();
@@ -177,12 +185,11 @@ public class App {
             String[] lineArray = line.split("\t");
             // Create a new ScheduleFile object
             // I am assuming that the file is formatted correctly and data is clean
-            scheduleFile.add(new ScheduleFile(lineArray[0], 
-            lineArray[1], 
-            lineArray[2], 
-            convert12HrTo24Hr(addAmOrPmToTime(lineArray[3])), 
-            convert12HrTo24Hr(addAmOrPmToTime(lineArray[4]))
-            ));
+            scheduleFile.add(new ScheduleFile(lineArray[0],
+                    lineArray[1],
+                    separateDays(lineArray[2]),
+                    convert12HrTo24Hr(addAmOrPmToTime(lineArray[3])),
+                    convert12HrTo24Hr(addAmOrPmToTime(lineArray[4]))));
             // Print what is in the array
             // System.out.println(lineArray[0] + " " + lineArray[1] + " " + lineArray[2] + "
             // " + lineArray[3] + " " + lineArray[4]);
@@ -197,10 +204,10 @@ public class App {
             // Insert the data into the database
             db.insertScheduleFile(sf);
         }
+        scheduleFile.clear();
     }
 
-
-    public static String addAmOrPmToTime(String time) {
+    private static String addAmOrPmToTime(String time) {
         // Since the times are formatted like this: 8:00
         // I want to distinguish if they're supposed to be AM or PM
         // So I can convert them to 24 hour time
@@ -212,7 +219,7 @@ public class App {
 
         // If the hour is more than 7 and less than 12
         // Then it's AM
-        // If its more than 12 and less than 8 
+        // If its more than 12 and less than 8
         // Then it's PM
         // I'm writing this based off the given JITClasses.txt file
         // and the explaination of the available timeslots.
@@ -229,7 +236,7 @@ public class App {
         }
     }
 
-    public static String convert12HrTo24Hr(String time) {
+    private static String convert12HrTo24Hr(String time) {
         // A string of format hh:mm AM/PM
         // to 24 hour format and return it
         // as a string
@@ -242,7 +249,11 @@ public class App {
 
         // Convert the hour to 24 hour format
         if (ampm.equals("PM")) {
-            hour = Integer.toString(Integer.parseInt(hour) + 12);
+            if (hour.equals("12")) {
+                hour = "12";
+            } else {
+                hour = Integer.toString(Integer.parseInt(hour) + 12);
+            }
         }
 
         // Format h:mm to hh:mm
@@ -252,5 +263,92 @@ public class App {
 
         // Return the 24 hour format
         return hour + ":" + minute + ":00";
+    }
+
+    private static String separateDays(String days) {
+        // Days are formatted like this: M,T,W,R,F,MW, or TR
+
+        // Check if the days is in format MW OR TR
+        // if so, then separate them M AND w OR T AND R
+
+        // I'm doing this so when I query the database for dates
+        // I can easily use the IN function to insert an array
+        // of days. So I can check if an M class is on the same day
+        // as a MW class
+        if (days.length() == 2) {
+            return days.substring(0, 1) + "," + days.substring(1, 2);
+        } else {
+            return days;
+        }
+    }
+
+    private static void reportDateTime() {
+        clearConsole();
+
+        ArrayList<Schedule> schedule = db.getSchedule();
+
+        System.out.format("%-8s%-20s%-15s\n", "Days", "Time", "Course");
+
+        // Loop through the schedule ArrayList
+        for (Schedule s : schedule) {
+            // Format a string as the following and print it
+            // Date: days | Time: startTime:endTime | Class: course
+            System.out.format("%-8s%-20s%-15s\n", s.getDays(), (s.getStartTime() + "-" + s.getEndTime()), s.getCourse());
+
+
+            // System.out.println("Date: " + s.getDays() + " | Time: " + s.getStartTime() + ":" + s.getEndTime() + " | Class: " + s.getCourse());
+            // Print the data
+            // System.out.println(s.getDays() + " " + s.getStartTime() + " - " + s.getEndTime() + " " + s.getCourse());
+        }
+
+        // Prompt user to press x to exit
+        Boolean exit = false;
+        System.out.println("Press x to exit");
+
+        // Listen for the user to just press the x key
+        while (!exit) {
+            Scanner scanner = new Scanner(System.in);
+            String input = scanner.nextLine();
+            if (input.equals("x")) {
+                exit = true;
+            }
+        }
+    }
+
+    private static void reportFacultyMembers() {
+        // clearConsole();
+
+        ArrayList<Schedule> schedule = db.getFacultySchedule();
+
+        System.out.format("%-8s%-20s%-15s\n", "Days", "Time", "Course");
+
+        // Loop through the schedule ArrayList
+        for (Schedule s : schedule) {
+            // Format a string as the following and print it
+            // Date: days | Time: startTime:endTime | Class: course
+            System.out.format("%-8s%-20s%-15s\n", s.getDays(), (s.getStartTime() + "-" + s.getEndTime()), s.getCourse());
+
+
+            // System.out.println("Date: " + s.getDays() + " | Time: " + s.getStartTime() + ":" + s.getEndTime() + " | Class: " + s.getCourse());
+            // Print the data
+            // System.out.println(s.getDays() + " " + s.getStartTime() + " - " + s.getEndTime() + " " + s.getCourse());
+        }
+
+        // Prompt user to press x to exit
+        Boolean exit = false;
+        System.out.println("Press x to exit");
+
+        // Listen for the user to just press the x key
+        while (!exit) {
+            Scanner scanner = new Scanner(System.in);
+            String input = scanner.nextLine();
+            if (input.equals("x")) {
+                exit = true;
+            }
+        }
+    }
+
+    private static void clearConsole() {
+        System.out.print("\033\143");
     }
 }

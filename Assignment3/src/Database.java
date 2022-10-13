@@ -265,23 +265,21 @@ public class Database {
             // And here's where the real fun begins
             // Everything has been all fun and games till now.
             String[] alternateTime = findAlternateTime(schedule, course);
+            if (alternateTime[0] == null) {
+                System.out.println("No alternate time found");
+            } else {
+                // Update the schedule object with
+                // the newly found data
+                schedule.setStartTime(alternateTime[0]);
+                schedule.setEndTime(alternateTime[1]);
+                schedule.setDays(alternateTime[2]);
+                schedule.setClassroomId(Integer.parseInt(alternateTime[3]));
 
-            // Update the schedule object with
-            // the newly found data
-            schedule.setStartTime(alternateTime[0]);
-            schedule.setEndTime(alternateTime[1]);
-            schedule.setDays(alternateTime[2]);
-            schedule.setClassroomId(Integer.parseInt(alternateTime[3]));
+                System.out.println("Class rescheduled to " + schedule.getDays() + " from " + schedule.getStartTime()
+                        + " to " + schedule.getEndTime() + " in classroom " + schedule.getClassroomId());
 
-            // Insert the schedule
-
-            System.out.println("Class rescheduled to " + schedule.getDays() + " from " + schedule.getStartTime() + " to " + schedule.getEndTime() + " in classroom " + schedule.getClassroomId());
-            System.out.println("Inserting schedule... CONFLICTS");
-
-            // Output the schedule
-            System.out.println(schedule.toString());
-
-            insertSchedule(schedule);
+                insertSchedule(schedule);
+            }
         }
     }
 
@@ -347,25 +345,6 @@ public class Database {
 
     private ArrayList<Schedule> findSchedule(String startTime, String endTime, String days) {
 
-        // Add AM or PM to the start and end times using the
-        // addAmOrPmToTime method
-        // startTime = addAmOrPmToTime(startTime);
-        // endTime = addAmOrPmToTime(endTime);
-
-        // Output them to the console
-        // System.out.println(startTime);
-        // System.out.println(endTime);
-
-        // Output them to the console
-        // System.out.println(startTime);
-        // System.out.println(endTime);
-
-        // Cool so now that we have 24HR times we can
-        // Select all rows from the schedule_table where the
-        // the startTime is between the start_time and end_time
-        // and the end_time is between the start_time and end_time
-        // and the days are the same
-
         // Query Summed Up:
         // Select everything from the schedule where
         // the start time < the GIVEN end time
@@ -373,7 +352,7 @@ public class Database {
         // and the days are the same
         // AND THEN join the classroom table to actually
         // get the classroom name
-        String sql = "SELECT * FROM schedule_table LEFT JOIN classroom_table ON schedule_table.classroom_tuid = classroom_table.tuid WHERE time(start_time) < time(?) AND time(end_time)> time(?) AND days = ?;";
+        String sql = "SELECT * FROM schedule_table LEFT JOIN classroom_table ON schedule_table.classroom_tuid = classroom_table.tuid WHERE time(start_time) < time(?) AND time(end_time)> time(?) AND days IN (?);";
         ArrayList<Schedule> schedules = new ArrayList<Schedule>();
 
         try (Connection conn = this.connect();
@@ -390,11 +369,6 @@ public class Database {
 
             // Check if the professor was found
             while (rs.next()) {
-                // Output the course_tuid, start_time, end_time, and days
-                // System.out.println("Course TUID: " + rs.getInt("course_tuid") + "\nStart: " +
-                // rs.getString("start_time") + "\nEnd: " + rs.getString("end_time") + "\nDay: "
-                // + rs.getString("days") + "\nRoom: " + rs.getString("classroom_name"));
-
                 // Add the results to the schedules arraylist
                 schedules.add(new Schedule(rs.getInt("tuid"), rs.getInt("course_tuid"), rs.getInt("classroom_tuid"),
                         rs.getInt("professor_tuid"), rs.getInt("section"), rs.getString("start_time"),
@@ -411,8 +385,6 @@ public class Database {
 
     private void insertSchedule(Schedule schedule) {
         // Insert the schedule into the schedule_table
-        // and return true if it was successful
-        // and false if it was not
 
         String sql = "INSERT INTO schedule_table(course_tuid, classroom_tuid, professor_tuid, section, start_time, end_time, days) VALUES(?, ?, ?, ?, ?, ?, ?);";
 
@@ -454,8 +426,9 @@ public class Database {
             // Get the total count of the results
             int count = 1;
 
-            // Check if the professor was found
-            if (rs.next()) {
+            // Loop through all the results and
+            // increment the count
+            while (rs.next()) {
                 count++;
             }
 
@@ -507,32 +480,39 @@ public class Database {
         // M,T,W,R,F
 
         if (course.getCreditHours() == 4) {
-            // available times are:
-            // 8:30-10:30
-            // 10:30-12:30
-            // 12:30-2:30
-            // 2:30-4:30
             // Cracks knuckles... Here we go...
-
-            // System.out.println("4 CREDIT HOUR COURSE");
 
             // An array of the available start times
             String[] startTimes = { "08:30:00", "10:30:00", "12:30:00", "14:30:00" };
             // An array of the available end times
             String[] endTimes = { "10:30:00", "12:30:00", "14:30:00", "16:30:00" };
+
+            // An array of the available Friday start times
+            String[] fridayStartTimes = { "08:30:00", "09:30:00", "10:30:00", "11:30:00", "12:30:00" };
+            // An array of the available Friday end times
+            String[] fridayEndTimes = { "10:30:00", "11:30:00", "12:30:00", "13:30:00", "14:30:00" };
+
             String currentTime = schedule.getStartTime();
             // Get the index of the currentTime within the startTimes array
-            int index = Arrays.asList(startTimes).indexOf(currentTime);
-            boolean foundTimeSlot = false;
+            int originalIndex = Arrays.asList(startTimes).indexOf(currentTime);
+            int index = originalIndex + 1;
+            boolean continueExec = true;
             String[] date = new String[4];
             ArrayList<Schedule> schedules;
-            while (!foundTimeSlot) {
+            // Making a copy of the currently selected days
+            // So I can reference later what day I'm switching the
+            // times at
+            String originalDate = schedule.getDays();
+            while (continueExec) {
 
                 // Check the same date for a different room
-                schedules = findSchedule(startTimes[index], endTimes[index], schedule.getDays());
+                schedules = findSchedule(schedule.getStartTime(), schedule.getEndTime(), schedule.getDays());
 
                 // We shouldn't have to worry about schedules being empty
                 // as we've already checked for conflicts
+
+                System.out.println("Searching day " + schedule.getDays() + " at time " + schedule.getStartTime() + " - "
+                        + schedule.getEndTime());
 
                 // Loop through and create a csv
                 // of the used classrooms
@@ -544,7 +524,7 @@ public class Database {
                     } else {
                         usedClassrooms += s.getClassroomId() + ",";
                     }
-                    System.out.println("Unavailable classroom: " + s.getClassroomId());
+                    // System.out.println("Unavailable classroom: " + s.getClassroomId());
                 }
 
                 // Query the classroom_table to get all the classrooms
@@ -554,29 +534,69 @@ public class Database {
                 // If classrooms available, then set the classroom id
                 // and return the new schedule
                 if (availableClassrooms.size() > 0) {
-                    System.out.println("Available classrooms: " + availableClassrooms);
-                    date[0] = startTimes[index];
-                    date[1] = endTimes[index];
+                    // System.out.println("Available classrooms: " + availableClassrooms);
+                    date[0] = schedule.getStartTime();
+                    date[1] = schedule.getEndTime();
                     date[2] = schedule.getDays();
                     date[3] = availableClassrooms.get(0).toString();
-                    foundTimeSlot = true;
-                    // return date;
+                    continueExec = false;
+                } else {
+
+                    // Check if date if MW. If so, then change it to TR.
+                    // If TR, then change it to MW.
+                    if (schedule.getDays().equals("M,W")) {
+                        // System.out.println("Changing date to TR");
+                        schedule.setDays("T,R");
+                    } else if (schedule.getDays().equals("T,R")) {
+                        // System.out.println("Changing date to MW");
+                        schedule.setDays("M,W");
+                    }
+
+                    if (schedule.getDays() == "F") {
+                        // If index is at the end
+                        // Then stop the loop because
+                        // no date is available
+                        if (index == startTimes.length - 1) {
+                            continueExec = false;
+                        } else {
+                            // Increment the index
+                            index++;
+                        }
+                        schedule.setStartTime(fridayStartTimes[index]);
+                        schedule.setEndTime(fridayEndTimes[index]);
+                    } else {
+                        if (originalDate.equals(schedule.getDays())) {
+                            // No classrooms available.
+                            // Check if the index is at the end of the array
+                            // if so, then reset the index to 0
+                            // or if the index is the same as the original index
+                            // then there are no available times
+                            // So we'll check Friday.
+                            if (index - 1 == startTimes.length - 1) {
+                                // We hit the end of the times array
+                                // Go to start of time slots
+                                System.out.println("Hit end of time slots. Going to beginning");
+                                index = 0;
+                            } else if (index != originalIndex) {
+                                // If current time !== starting time
+                                // Means we haven't gone through all times
+                                System.out.println("WE'RE CHANGING THE TIME");
+                                schedule.setStartTime(startTimes[index]);
+                                schedule.setEndTime(endTimes[index]);
+                                index++;
+                            } else {
+                                // Nothing special, just increment the index
+                                System.out.println("Hit original index. Checking Friday");
+                                // Check Friday
+                                System.out.println("Changing date to Friday");
+                                schedule.setDays("F");
+                                index = 0;
+                                schedule.setStartTime(fridayStartTimes[index]);
+                                schedule.setEndTime(fridayEndTimes[index]);
+                            }
+                        }
+                    }
                 }
-
-                // if (schedule.getDays() == "MW") {
-
-                //     // We'll check TR
-                //     schedules = findSchedule(startTimes[index], endTimes[index], "TR");
-                //     if (schedules.size() == 0) {
-                //         // We found a time slot
-                //         date[0] = startTimes[index];
-                //         date[1] = endTimes[index];
-                //         date[2] = "TR";
-                //         foundTimeSlot = true;
-                //         // return date;
-                //     }
-
-                // }
             }
             return date;
         } else if (course.getCreditHours() == 3) {
@@ -588,57 +608,484 @@ public class Database {
             // 1:00-2:30
             // 2:00-3:30
             // 3:00-4:30
-            String[] date = new String[3];
-            date[0] = "12";
-            date[1] = "12";
-            date[2] = "TR";
+            // An array of the available start times
+            String[] startTimes = { "09:00:00", "10:00:00", "11:00:00", "12:00:00", "13:00:00", "14:00:00",
+                    "15:00:00" };
+            // An array of the available end times
+            String[] endTimes = { "10:30:00", "11:30:00", "12:30:00", "13:30:00", "14:30:00", "15:30:00", "16:30:00" };
+
+            // An array of the available Friday start times
+            // 09:00:00 - 13:00:00
+            String[] fridayStartTimes = { "09:00:00", "10:00:00", "11:00:00", "12:00:00", "13:00:00" };
+            // An array of the available Friday end times
+            String[] fridayEndTimes = { "10:30:00", "11:30:00", "12:30:00", "13:30:00", "14:30:00" };
+
+            String currentTime = schedule.getStartTime();
+            // Get the index of the currentTime within the startTimes array
+            int originalIndex = Arrays.asList(startTimes).indexOf(currentTime);
+            int index = originalIndex + 1;
+            boolean continueExec = true;
+            String[] date = new String[4];
+            ArrayList<Schedule> schedules;
+            // Making a copy of the currently selected days
+            // So I can reference later what day I'm switching the
+            // times at
+            String originalDate = schedule.getDays();
+            while (continueExec) {
+
+                // Check the same date for a different room
+                schedules = findSchedule(schedule.getStartTime(), schedule.getEndTime(), schedule.getDays());
+
+                // We shouldn't have to worry about schedules being empty
+                // as we've already checked for conflicts
+
+                System.out.println("Searching day " + schedule.getDays() + " at time " + schedule.getStartTime() + " - "
+                        + schedule.getEndTime());
+
+                // Loop through and create a csv
+                // of the used classrooms
+                String usedClassrooms = "";
+                for (Schedule s : schedules) {
+                    // If last index, don't add comma
+                    if (schedules.indexOf(s) == schedules.size() - 1) {
+                        usedClassrooms += s.getClassroomId();
+                    } else {
+                        usedClassrooms += s.getClassroomId() + ",";
+                    }
+                    // System.out.println("Unavailable classroom: " + s.getClassroomId());
+                }
+
+                // Query the classroom_table to get all the classrooms
+                // except for the ones that are already being used
+                ArrayList<Integer> availableClassrooms = findAvailableClassrooms(usedClassrooms);
+
+                // If classrooms available, then set the classroom id
+                // and return the new schedule
+                if (availableClassrooms.size() > 0) {
+                    // System.out.println("Available classrooms: " + availableClassrooms);
+                    date[0] = schedule.getStartTime();
+                    date[1] = schedule.getEndTime();
+                    date[2] = schedule.getDays();
+                    date[3] = availableClassrooms.get(0).toString();
+                    continueExec = false;
+                } else {
+
+                    // Check if date if MW. If so, then change it to TR.
+                    // If TR, then change it to MW.
+                    if (schedule.getDays().equals("M,W")) {
+                        // System.out.println("Changing date to TR");
+                        schedule.setDays("T,R");
+                    } else if (schedule.getDays().equals("T,R")) {
+                        // System.out.println("Changing date to MW");
+                        schedule.setDays("M,W");
+                    }
+
+                    if (schedule.getDays() == "F") {
+                        // If index is at the end
+                        // Then stop the loop because
+                        // no date is available
+                        if (index == startTimes.length - 1) {
+                            continueExec = false;
+                        } else {
+                            // Increment the index
+                            index++;
+                        }
+                        schedule.setStartTime(fridayStartTimes[index]);
+                        schedule.setEndTime(fridayEndTimes[index]);
+                    } else {
+                        if (originalDate.equals(schedule.getDays())) {
+                            // No classrooms available.
+                            // Check if the index is at the end of the array
+                            // if so, then reset the index to 0
+                            // or if the index is the same as the original index
+                            // then there are no available times
+                            // So we'll check Friday.
+                            if (index - 1 == startTimes.length - 1) {
+                                // We hit the end of the times array
+                                // Go to start of time slots
+                                System.out.println("Hit end of time slots. Going to beginning");
+                                index = 0;
+                            } else if (index != originalIndex) {
+                                // If current time !== starting time
+                                // Means we haven't gone through all times
+                                System.out.println("WE'RE CHANGING THE TIME");
+                                schedule.setStartTime(startTimes[index]);
+                                schedule.setEndTime(endTimes[index]);
+                                index++;
+                            } else {
+                                // Nothing special, just increment the index
+                                System.out.println("Hit original index. Checking Friday");
+                                // Check Friday
+                                System.out.println("Changing date to Friday");
+                                schedule.setDays("F");
+                                index = 0;
+                                schedule.setStartTime(fridayStartTimes[index]);
+                                schedule.setEndTime(fridayEndTimes[index]);
+                            }
+                        }
+                    }
+                }
+            }
             return date;
         } else if (course.getCreditHours() == 2) {
             // available times are any mark between:
             // 9:00 and 2:00
-            String[] date = new String[3];
-            date[0] = "12";
-            date[1] = "12";
-            date[2] = "TR";
+            // An array of the available start times
+            String[] startTimes = { "09:00:00", "10:00:00", "11:00:00", "12:00:00", "13:00:00", "14:00:00" };
+            // An array of the available end times
+            String[] endTimes = { "11:00:00", "12:00:00", "13:00:00", "14:00:00", "15:00:00", "16:00:00" };
+
+            // An array of the available Friday start times
+            // 09:00:00 - 13:00:00
+            String[] fridayStartTimes = { "09:00:00", "10:00:00", "11:00:00", "12:00:00", "13:00:00" };
+            // An array of the available Friday end times
+            String[] fridayEndTimes = { "10:30:00", "11:30:00", "12:30:00", "13:30:00", "14:30:00" };
+
+            String currentTime = schedule.getStartTime();
+            // Get the index of the currentTime within the startTimes array
+            int originalIndex = Arrays.asList(startTimes).indexOf(currentTime);
+            int index = originalIndex + 1;
+            boolean continueExec = true;
+            String[] date = new String[4];
+            ArrayList<Schedule> schedules;
+            // Making a copy of the currently selected days
+            // So I can reference later what day I'm switching the
+            // times at
+            String originalDate = schedule.getDays();
+            while (continueExec) {
+
+                // Check the same date for a different room
+                schedules = findSchedule(schedule.getStartTime(), schedule.getEndTime(), schedule.getDays());
+
+                // We shouldn't have to worry about schedules being empty
+                // as we've already checked for conflicts
+
+                System.out.println("Searching day " + schedule.getDays() + " at time " + schedule.getStartTime() + " - "
+                        + schedule.getEndTime());
+
+                // Loop through and create a csv
+                // of the used classrooms
+                String usedClassrooms = "";
+                for (Schedule s : schedules) {
+                    // If last index, don't add comma
+                    if (schedules.indexOf(s) == schedules.size() - 1) {
+                        usedClassrooms += s.getClassroomId();
+                    } else {
+                        usedClassrooms += s.getClassroomId() + ",";
+                    }
+                    // System.out.println("Unavailable classroom: " + s.getClassroomId());
+                }
+
+                // Query the classroom_table to get all the classrooms
+                // except for the ones that are already being used
+                ArrayList<Integer> availableClassrooms = findAvailableClassrooms(usedClassrooms);
+
+                // If classrooms available, then set the classroom id
+                // and return the new schedule
+                if (availableClassrooms.size() > 0) {
+                    // System.out.println("Available classrooms: " + availableClassrooms);
+                    date[0] = schedule.getStartTime();
+                    date[1] = schedule.getEndTime();
+                    date[2] = schedule.getDays();
+                    date[3] = availableClassrooms.get(0).toString();
+                    continueExec = false;
+                } else {
+
+                    // Check if date if MW. If so, then change it to TR.
+                    // If TR, then change it to MW.
+                    if (schedule.getDays().equals("M")) {
+                        // System.out.println("Changing date to TR");
+                        schedule.setDays("T");
+                    } else if (schedule.getDays().equals("T")) {
+                        // System.out.println("Changing date to MW");
+                        schedule.setDays("W");
+                    } else if (schedule.getDays().equals("W")) {
+                        // System.out.println("Changing date to TR");
+                        schedule.setDays("R");
+                    } else if (schedule.getDays().equals("R")) {
+                        // System.out.println("Changing date to MW");
+                        schedule.setDays("M");
+                    }
+
+                    if (schedule.getDays() == "F") {
+                        // If index is at the end
+                        // Then stop the loop because
+                        // no date is available
+                        if (index == startTimes.length - 1) {
+                            continueExec = false;
+                        } else {
+                            // Increment the index
+                            index++;
+                        }
+                        schedule.setStartTime(fridayStartTimes[index]);
+                        schedule.setEndTime(fridayEndTimes[index]);
+                    } else {
+                        if (originalDate.equals(schedule.getDays())) {
+                            // No classrooms available.
+                            // Check if the index is at the end of the array
+                            // if so, then reset the index to 0
+                            // or if the index is the same as the original index
+                            // then there are no available times
+                            // So we'll check Friday.
+                            if (index - 1 == startTimes.length - 1) {
+                                // We hit the end of the times array
+                                // Go to start of time slots
+                                System.out.println("Hit end of time slots. Going to beginning");
+                                index = 0;
+                            } else if (index != originalIndex) {
+                                // If current time !== starting time
+                                // Means we haven't gone through all times
+                                System.out.println("WE'RE CHANGING THE TIME");
+                                schedule.setStartTime(startTimes[index]);
+                                schedule.setEndTime(endTimes[index]);
+                                index++;
+                            } else {
+                                // Nothing special, just increment the index
+                                System.out.println("Hit original index. Checking Friday");
+                                // Check Friday
+                                System.out.println("Changing date to Friday");
+                                schedule.setDays("F");
+                                index = 0;
+                                schedule.setStartTime(fridayStartTimes[index]);
+                                schedule.setEndTime(fridayEndTimes[index]);
+                            }
+                        }
+                    }
+                }
+            }
             return date;
         } else {
             // available times are any mark between:
             // 9:00 and 3:00
-            String[] date = new String[3];
-            date[0] = "12";
-            date[1] = "12";
-            date[2] = "TR";
+            // An array of the available start times
+            String[] startTimes = { "09:00:00", "10:00:00", "11:00:00", "12:00:00", "13:00:00", "14:00:00",
+                    "15:00:00" };
+            // An array of the available end times
+            String[] endTimes = { "10:00:00", "11:00:00", "12:00:00", "13:00:00", "14:00:00", "15:00:00", "16:00:00" };
+
+            // An array of the available Friday start times
+            // 09:00:00 - 16:00:00
+            String[] fridayStartTimes = { "09:00:00", "10:00:00", "11:00:00", "12:00:00", "13:00:00", "14:00:00",
+                    "15:00:00", "16:00:00" };
+            // An array of the available Friday end times
+            String[] fridayEndTimes = { "10:00:00", "11:00:00", "12:00:00", "13:00:00", "14:00:00", "15:00:00",
+                    "16:00:00", "17:00:00" };
+
+            String currentTime = schedule.getStartTime();
+            // Get the index of the currentTime within the startTimes array
+            int originalIndex = Arrays.asList(startTimes).indexOf(currentTime);
+            int index = originalIndex + 1;
+            boolean continueExec = true;
+            String[] date = new String[4];
+            ArrayList<Schedule> schedules;
+            // Making a copy of the currently selected days
+            // So I can reference later what day I'm switching the
+            // times at
+            String originalDate = schedule.getDays();
+            while (continueExec) {
+
+                // Check the same date for a different room
+                schedules = findSchedule(schedule.getStartTime(), schedule.getEndTime(), schedule.getDays());
+
+                // We shouldn't have to worry about schedules being empty
+                // as we've already checked for conflicts
+
+                System.out.println("Searching day " + schedule.getDays() + " at time " + schedule.getStartTime() + " - "
+                        + schedule.getEndTime());
+
+                // Loop through and create a csv
+                // of the used classrooms
+                String usedClassrooms = "";
+                for (Schedule s : schedules) {
+                    // If last index, don't add comma
+                    if (schedules.indexOf(s) == schedules.size() - 1) {
+                        usedClassrooms += s.getClassroomId();
+                    } else {
+                        usedClassrooms += s.getClassroomId() + ",";
+                    }
+                    // System.out.println("Unavailable classroom: " + s.getClassroomId());
+                }
+
+                // Query the classroom_table to get all the classrooms
+                // except for the ones that are already being used
+                ArrayList<Integer> availableClassrooms = findAvailableClassrooms(usedClassrooms);
+
+                // If classrooms available, then set the classroom id
+                // and return the new schedule
+                if (availableClassrooms.size() > 0) {
+                    // System.out.println("Available classrooms: " + availableClassrooms);
+                    date[0] = schedule.getStartTime();
+                    date[1] = schedule.getEndTime();
+                    date[2] = schedule.getDays();
+                    date[3] = availableClassrooms.get(0).toString();
+                    continueExec = false;
+                } else {
+
+                    // Check if date if MW. If so, then change it to TR.
+                    // If TR, then change it to MW.
+                    if (schedule.getDays().equals("M")) {
+                        // System.out.println("Changing date to TR");
+                        schedule.setDays("T");
+                    } else if (schedule.getDays().equals("T")) {
+                        // System.out.println("Changing date to MW");
+                        schedule.setDays("W");
+                    } else if (schedule.getDays().equals("W")) {
+                        // System.out.println("Changing date to TR");
+                        schedule.setDays("R");
+                    } else if (schedule.getDays().equals("R")) {
+                        // System.out.println("Changing date to MW");
+                        schedule.setDays("M");
+                    }
+
+                    if (schedule.getDays() == "F") {
+                        // If index is at the end
+                        // Then stop the loop because
+                        // no date is available
+                        if (index == startTimes.length - 1) {
+                            continueExec = false;
+                        } else {
+                            // Increment the index
+                            index++;
+                        }
+                        schedule.setStartTime(fridayStartTimes[index]);
+                        schedule.setEndTime(fridayEndTimes[index]);
+                    } else {
+                        if (originalDate.equals(schedule.getDays())) {
+                            // No classrooms available.
+                            // Check if the index is at the end of the array
+                            // if so, then reset the index to 0
+                            // or if the index is the same as the original index
+                            // then there are no available times
+                            // So we'll check Friday.
+                            if (index - 1 == startTimes.length - 1) {
+                                // We hit the end of the times array
+                                // Go to start of time slots
+                                System.out.println("Hit end of time slots. Going to beginning");
+                                index = 0;
+                            } else if (index != originalIndex) {
+                                // If current time !== starting time
+                                // Means we haven't gone through all times
+                                System.out.println("WE'RE CHANGING THE TIME");
+                                schedule.setStartTime(startTimes[index]);
+                                schedule.setEndTime(endTimes[index]);
+                                index++;
+                            } else {
+                                // Nothing special, just increment the index
+                                System.out.println("Hit original index. Checking Friday");
+                                // Check Friday
+                                System.out.println("Changing date to Friday");
+                                schedule.setDays("F");
+                                index = 0;
+                                schedule.setStartTime(fridayStartTimes[index]);
+                                schedule.setEndTime(fridayEndTimes[index]);
+                            }
+                        }
+                    }
+                }
+            }
             return date;
         }
     }
 
     private ArrayList<Integer> findAvailableClassrooms(String usedClassrooms) {
-        // Query the classroom_table to get all the classrooms
-        // except for the ones that are already being used
+        // I was going to make this DB driven but decided not to
+        // as the assignment description
+        // only mentioned the 3 rooms.
 
-        String sql = "SELECT * FROM classroom_table WHERE tuid NOT IN (?);";
+        // Available classrooms are A, B, and C with their indexes
+        // being 1,2,3 respectively
 
+        // Create an array of the available classrooms
+        // and remove the ones that are already being used
+        ArrayList<Integer> availableClassrooms = new ArrayList<Integer>();
+        availableClassrooms.add(1);
+        availableClassrooms.add(2);
+        availableClassrooms.add(3);
+
+        System.out.println("Unavailable classrooms: " + usedClassrooms);
+
+        // If there are no used classrooms, then return the available
+        // classrooms
+        if (usedClassrooms.equals("")) {
+            return availableClassrooms;
+        }
+
+        // The usedClassrooms is a csv of the used classrooms
+        // we need to remove these from the available classrooms
+        String[] usedClassroomsArray = usedClassrooms.split(",");
+        if (usedClassroomsArray.length == 3) {
+            // All are gone
+            availableClassrooms.clear();
+        } else {
+            for (String s : usedClassroomsArray) {
+                // Remove the used classroom from the available classrooms
+                // System.out.println("Removing classroom: " + s);
+                try {
+                    availableClassrooms.remove(availableClassrooms.indexOf(Integer.parseInt(s)));
+                } catch (Exception e) {
+                    // System.out.println("Error removing classroom: " + s);
+                    // This means that we are completely out of room
+                }
+            }
+        }
+
+        System.out.println("Available classrooms: " + availableClassrooms);
+        return availableClassrooms;
+    }
+
+    public ArrayList<Schedule> getSchedule() {
+        ArrayList<Schedule> schedule = new ArrayList<Schedule>();
+
+        // Get the entire schedule from the database while joining the classroom_table
+        // and professor_table and courses_table
+        String sql = "SELECT * FROM schedule_table JOIN classroom_table ON schedule_table.classroom_tuid = classroom_table.tuid JOIN professors_table ON schedule_table.professor_tuid = professors_table.tuid JOIN courses_table ON schedule_table.course_tuid = courses_table.tuid;";
+
+        // Execute the query and loop through the results and
+        // output the console the results
         try (Connection conn = this.connect();
-                PreparedStatement stmt = conn.prepareStatement(sql)) {
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
 
-            // set the value
-            stmt.setString(1, usedClassrooms);
+            ResultSet rs = stmt.getResultSet();
 
-            ResultSet rs = stmt.executeQuery();
-
-            // Create an arraylist of the available classrooms
-            ArrayList<Integer> availableClassrooms = new ArrayList<Integer>();
-
-            // Check if the professor was found
+            // loop through the result set
             while (rs.next()) {
-                // Create a new professor object
-                availableClassrooms.add(rs.getInt(1));
+                // System.out.println(rs.getString("tuid"));
+                schedule.add(new Schedule(rs.getInt("course_tuid"), rs.getInt("classroom_tuid"), rs.getInt("professor_tuid"),
+                        rs.getInt("section"), rs.getString("start_time"), rs.getString("end_time"), rs.getString("days"), rs.getString("course_title"), rs.getString("professor_name"), rs.getString("classroom_name")));
             }
 
-            return availableClassrooms;
         } catch (SQLException e) {
-            // System.out.println(e.getMessage());
+            System.out.println(e.getMessage());
         }
-        return null;
+
+        // // Execute the query and loop through the results and add them to the
+        // schedule
+        // try (Connection conn = this.connect();
+        // Statement stmt = conn.createStatement()) {
+
+        // ResultSet rs = stmt.executeQuery(sql);
+
+        // System.out.println("Running query: ");
+
+        // while (rs.next()) {
+        // System.out.println("Adding schedule: " + rs.getString("course_id"));
+        // Schedule s = new Schedule();
+        // s.setCourseId(rs.getInt("course_tuid"));
+        // s.setProfessorId(rs.getInt("professor_tuid"));
+        // s.setClassroomId(rs.getInt("classroom_tuid"));
+        // // s.setStartTime(rs.getString("start_time"));
+        // // s.setEndTime(rs.getString("end_time"));
+        // // s.setDays(rs.getString("days"));
+        // // s.setCourse(rs.getString("course_name"));
+        // // s.setProfessor(rs.getString("professor_name"));
+        // // s.setClassroom(rs.getString("classroom_name"));
+        // schedule.add(s);
+        // }
+        // } catch (SQLException e) {
+        // // System.out.println(e.getMessage());
+        // }
+
+        return schedule;
     }
 }

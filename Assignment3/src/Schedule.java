@@ -8,6 +8,9 @@ public class Schedule {
     private String startTime;
     private String endTime;
     private String days;
+    private String course;
+    private String professor;
+    private String classroom;
 
     // Constructor
     public Schedule(int id, int courseId, int classroomId, int professorId, int section, String startTime, String endTime, String days) {
@@ -30,6 +33,24 @@ public class Schedule {
         this.startTime = sc.getStartTime();
         this.endTime = sc.getEndTime();
         this.days = sc.getDays();
+    }
+
+        // 3rd Constructor
+        public Schedule(int courseId, int classroomId, int professorId, int section, String startTime, String endTime, String days, String course, String professor, String classroom) {
+            this.courseId = courseId;
+            this.classroomId = classroomId;
+            this.professorId = professorId;
+            this.section = section;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.days = days;
+            this.course = course;
+            this.professor = professor;
+            this.classroom = classroom;
+        }
+
+    // Empty constructor
+    public Schedule() {
     }
 
     // Getters
@@ -65,10 +86,31 @@ public class Schedule {
         return days;
     }
 
+    public String getCourse() {
+        return course;
+    }
+
+    public String getProfessor() {
+        return professor;
+    }
+
+    public String getClassroom() {
+        return classroom;
+    }
+
    
     // Setters
+
+    public void setCourseId(int courseId) {
+        this.courseId = courseId;
+    }
+
     public void setClassroomId(int classroomId) {
         this.classroomId = classroomId;
+    }
+
+    public void setProfessorId(int professorId) {
+        this.professorId = professorId;
     }
 
     public void setSection(int section) {
@@ -85,6 +127,18 @@ public class Schedule {
 
     public void setDays(String days) {
         this.days = days;
+    }
+
+    public void setCourse(String course) {
+        this.course = course;
+    }
+
+    public void setProfessor(String professor) {
+        this.professor = professor;
+    }
+
+    public void setClassroom(String classroom) {
+        this.classroom = classroom;
     }
 
 
