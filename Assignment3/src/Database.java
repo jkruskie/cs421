@@ -38,7 +38,7 @@ public class Database {
             // System.out.println("Creating schedule table...");
             stmt.execute(sql);
         } catch (SQLException e) {
-            // System.out.println(e.getMessage());
+            System.out.println(e.getMessage());
         }
 
         sql = "CREATE TABLE IF NOT EXISTS professors_table (\n"
