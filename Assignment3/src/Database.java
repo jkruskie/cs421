@@ -1051,40 +1051,174 @@ public class Database {
             // loop through the result set
             while (rs.next()) {
                 // System.out.println(rs.getString("tuid"));
-                schedule.add(new Schedule(rs.getInt("course_tuid"), rs.getInt("classroom_tuid"), rs.getInt("professor_tuid"),
-                        rs.getInt("section"), rs.getString("start_time"), rs.getString("end_time"), rs.getString("days"), rs.getString("course_title"), rs.getString("professor_name"), rs.getString("classroom_name")));
+                schedule.add(
+                        new Schedule(rs.getInt("course_tuid"), rs.getInt("classroom_tuid"), rs.getInt("professor_tuid"),
+                                rs.getInt("section"), rs.getString("start_time"), rs.getString("end_time"),
+                                rs.getString("days"), rs.getString("course_title"), rs.getString("professor_name"),
+                                rs.getString("classroom_name")));
             }
 
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
 
-        // // Execute the query and loop through the results and add them to the
-        // schedule
-        // try (Connection conn = this.connect();
-        // Statement stmt = conn.createStatement()) {
+        return schedule;
+    }
 
-        // ResultSet rs = stmt.executeQuery(sql);
+    public ArrayList<Professor> getProfessors() {
+        // Return all professors
+        ArrayList<Professor> professors = new ArrayList<Professor>();
 
-        // System.out.println("Running query: ");
+        // Get all the professors from the DB
+        String sql = "SELECT * FROM professors_table";
 
-        // while (rs.next()) {
-        // System.out.println("Adding schedule: " + rs.getString("course_id"));
-        // Schedule s = new Schedule();
-        // s.setCourseId(rs.getInt("course_tuid"));
-        // s.setProfessorId(rs.getInt("professor_tuid"));
-        // s.setClassroomId(rs.getInt("classroom_tuid"));
-        // // s.setStartTime(rs.getString("start_time"));
-        // // s.setEndTime(rs.getString("end_time"));
-        // // s.setDays(rs.getString("days"));
-        // // s.setCourse(rs.getString("course_name"));
-        // // s.setProfessor(rs.getString("professor_name"));
-        // // s.setClassroom(rs.getString("classroom_name"));
-        // schedule.add(s);
-        // }
-        // } catch (SQLException e) {
-        // // System.out.println(e.getMessage());
-        // }
+        try (Connection conn = this.connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+
+            ResultSet rs = stmt.getResultSet();
+
+            // loop through the result set
+            while (rs.next()) {
+                // System.out.println(rs.getString("tuid"));
+                professors.add(new Professor(rs.getInt("tuid"), rs.getString("professor_name")));
+            }
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
+        return professors;
+    }
+
+    public ArrayList<Schedule> getFacultySchedule() {
+        ArrayList<Schedule> schedule = new ArrayList<Schedule>();
+
+        // Get the entire schedule from the database while joining the classroom_table
+        // and professor_table and courses_table
+        String sql = "SELECT * FROM professors_table INNER JOIN schedule_table ON professors_table.tuid = schedule_table.professor_tuid LEFT JOIN courses_table ON schedule_table.course_tuid = courses_table.tuid ORDER BY professors_table.tuid;";
+
+        // Execute the query and loop through the results and
+        // output the console the results
+        try (Connection conn = this.connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+
+            ResultSet rs = stmt.getResultSet();
+
+            // loop through the result set
+            while (rs.next()) {
+                // System.out.println(rs.getString("tuid"));
+                schedule.add(
+                        new Schedule(rs.getInt("course_tuid"), rs.getInt("classroom_tuid"), rs.getInt("professor_tuid"),
+                                rs.getInt("section"), rs.getString("start_time"), rs.getString("end_time"),
+                                rs.getString("days"), rs.getString("course_title"), rs.getString("professor_name"),
+                                rs.getString("classroom_name")));
+            }
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
+        return schedule;
+    }
+
+    public ArrayList<Schedule> getScheduleByProfessor(Integer id) {
+        // Get the schedule for a specific professor
+        ArrayList<Schedule> schedule = new ArrayList<Schedule>();
+
+        // Get the entire schedule from the database while joining the classroom_table
+        // and professor_table and courses_table
+        String sql = "SELECT * FROM professors_table INNER JOIN schedule_table ON professors_table.tuid = schedule_table.professor_tuid LEFT JOIN courses_table ON schedule_table.course_tuid = courses_table.tuid LEFT JOIN classroom_table ON schedule_table.classroom_tuid = classroom_table.tuid WHERE professors_table.tuid = "
+                + id + " ORDER BY professors_table.tuid;";
+
+        // Execute the query and loop through the results and
+        // output the console the results
+        try (Connection conn = this.connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+
+            ResultSet rs = stmt.getResultSet();
+
+            // loop through the result set
+            while (rs.next()) {
+                // System.out.println(rs.getString("tuid"));
+                Schedule classes = new Schedule(rs.getInt("course_tuid"), rs.getInt("classroom_tuid"),
+                        rs.getInt("professor_tuid"),
+                        rs.getInt("section"), rs.getString("start_time"), rs.getString("end_time"),
+                        rs.getString("days"), rs.getString("course_title"), rs.getString("professor_name"),
+                        rs.getString("classroom_name"));
+                classes.setCredits((rs.getInt("credit_hours")));
+                schedule.add(classes);
+
+            }
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+
+        return schedule;
+
+    }
+
+    public ArrayList<Course> getCourses() {
+        // Get all the courses in the DB and return them
+        ArrayList<Course> courses = new ArrayList<Course>();
+
+        // Get all the professors from the DB
+        String sql = "SELECT * FROM courses_table";
+
+        try (Connection conn = this.connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+
+            ResultSet rs = stmt.getResultSet();
+
+            // loop through the result set
+            while (rs.next()) {
+                // System.out.println(rs.getString("tuid"));
+                courses.add(new Course(rs.getInt("tuid"), rs.getString("course_id"), rs.getString("course_title"),
+                        rs.getInt("credit_hours")));
+            }
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return courses;
+    }
+
+    public ArrayList<Schedule> getScheduleByCourse(Integer courseId) {
+        // Get the schedule for all courses with the same course id
+        // Joining the classroom_table and courses_table
+        ArrayList<Schedule> schedule = new ArrayList<Schedule>();
+
+        // Get the entire schedule from the database while joining the classroom_table
+        // and professor_table and courses_table
+        String sql = "SELECT * FROM courses_table INNER JOIN schedule_table ON courses_table.tuid = schedule_table.course_tuid LEFT JOIN professors_table ON schedule_table.professor_tuid = professors_table.tuid LEFT JOIN classroom_table ON schedule_table.classroom_tuid = classroom_table.tuid WHERE courses_table.tuid = "
+                + courseId + " ORDER BY courses_table.tuid;";
+        // Execute the query and loop through the results and
+        // output the console the results
+        try (Connection conn = this.connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+
+            ResultSet rs = stmt.getResultSet();
+
+            // loop through the result set
+            while (rs.next()) {
+                // System.out.println(rs.getString("tuid"));
+                Schedule course = new Schedule(rs.getInt("course_tuid"), rs.getInt("classroom_tuid"),
+                        rs.getInt("professor_tuid"),
+                        rs.getInt("section"), rs.getString("start_time"), rs.getString("end_time"),
+                        rs.getString("days"), rs.getString("course_title"), rs.getString("professor_name"),
+                        rs.getString("classroom_name"));
+                course.setCapacity((rs.getInt("capacity")));
+                schedule.add(course);
+            }
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
 
         return schedule;
     }

@@ -114,6 +114,11 @@ public class App {
                     // System.out.println("Report - Faculty Members");
                     reportFacultyMembers();
                     break;
+                case 4:
+                    // Report - Classes
+                    // System.out.println("Report - Classes");
+                    reportClasses();
+                    break;
                 case 5:
                     // Exit
                     // System.out.println("Exiting");
@@ -287,13 +292,13 @@ public class App {
 
         ArrayList<Schedule> schedule = db.getSchedule();
 
-        System.out.format("%-8s%-20s%-15s\n", "Days", "Time", "Course");
+        System.out.format("%-8s%-10s%-20s%-15s\n", "Days", "Classroom", "Time", "Course");
 
         // Loop through the schedule ArrayList
         for (Schedule s : schedule) {
             // Format a string as the following and print it
-            // Date: days | Time: startTime:endTime | Class: course
-            System.out.format("%-8s%-20s%-15s\n", s.getDays(), (s.getStartTime() + "-" + s.getEndTime()), s.getCourse());
+            // Date: days | Time: startTime:endTime | Class: course | Classroom: classroom
+            System.out.format("%-8s%-10s%-20s%-15s\n", s.getDays(), s.getClassroom(), (s.getStartTime() + "-" + s.getEndTime()), s.getCourse());
 
 
             // System.out.println("Date: " + s.getDays() + " | Time: " + s.getStartTime() + ":" + s.getEndTime() + " | Class: " + s.getCourse());
@@ -316,22 +321,57 @@ public class App {
     }
 
     private static void reportFacultyMembers() {
-        // clearConsole();
+        clearConsole();
 
-        ArrayList<Schedule> schedule = db.getFacultySchedule();
+        ArrayList<Professor> professors = db.getProfessors();
 
-        System.out.format("%-8s%-20s%-15s\n", "Days", "Time", "Course");
+        System.out.format("%-10s%-8s%-10s%-20s%-15s\n", "Professor", "Days", "Classroom", "Time", "Course");
 
         // Loop through the schedule ArrayList
-        for (Schedule s : schedule) {
+        for (Professor prof : professors) {
+            int totalCredits = 0; // I could of done this via query
+            // but just decided to do this here instead
             // Format a string as the following and print it
-            // Date: days | Time: startTime:endTime | Class: course
-            System.out.format("%-8s%-20s%-15s\n", s.getDays(), (s.getStartTime() + "-" + s.getEndTime()), s.getCourse());
+            // Date: Professor | Time: startTime:endTime | Class: course
+            System.out.format("%-10s\n", prof.getName());
+            ArrayList<Schedule> schedule = db.getScheduleByProfessor(prof.getId());
+            for (Schedule s : schedule) {
+                totalCredits += s.getCredits();
+                System.out.format("%-10s%-8s%-10s%-20s%-15s\n", "", s.getDays(), s.getClassroom(), (s.getStartTime() + "-" + s.getEndTime()), s.getCourse());
+            }
+            System.out.format("%-10s%-8s%-10s%-20s%-15s\n", "", "", "", "", "Total Credits: " + totalCredits);
+        }
 
+        // Prompt user to press x to exit
+        Boolean exit = false;
+        System.out.println("Press x to exit");
 
-            // System.out.println("Date: " + s.getDays() + " | Time: " + s.getStartTime() + ":" + s.getEndTime() + " | Class: " + s.getCourse());
-            // Print the data
-            // System.out.println(s.getDays() + " " + s.getStartTime() + " - " + s.getEndTime() + " " + s.getCourse());
+        // Listen for the user to just press the x key
+        while (!exit) {
+            Scanner scanner = new Scanner(System.in);
+            String input = scanner.nextLine();
+            if (input.equals("x")) {
+                exit = true;
+            }
+        }
+    }
+
+    private static void reportClasses() {
+        clearConsole();
+
+        ArrayList<Course> courses = db.getCourses();
+
+        System.out.format("%-10s%-10s%-10s\n", "Course", "Classroom", "Capacity");
+
+        // Loop through the schedule ArrayList
+        for (Course course : courses) {
+            // Format a string as the following and print it
+            // Date: Course | Section: section | Capacity: capacity
+            System.out.format("%-10s\n", course.getName());
+            ArrayList<Schedule> schedule = db.getScheduleByCourse(course.getId());
+            for (Schedule s : schedule) {
+                System.out.format("%-10s%-10s%-10s\n", "", s.getClassroom(), s.getCapacity());
+            }
         }
 
         // Prompt user to press x to exit

@@ -11,6 +11,8 @@ public class Schedule {
     private String course;
     private String professor;
     private String classroom;
+    private int credits;
+    private int capacity;
 
     // Constructor
     public Schedule(int id, int courseId, int classroomId, int professorId, int section, String startTime, String endTime, String days) {
@@ -98,6 +100,14 @@ public class Schedule {
         return classroom;
     }
 
+    public Integer getCredits() {
+        return credits;
+    }
+
+    public Integer getCapacity() {
+        return capacity;
+    }
+
    
     // Setters
 
@@ -139,6 +149,14 @@ public class Schedule {
 
     public void setClassroom(String classroom) {
         this.classroom = classroom;
+    }
+
+    public void setCredits(int credits) {
+        this.credits = credits;
+    }
+
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
     }
 
 
